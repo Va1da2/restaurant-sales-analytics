@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import pandas as pd
 import streamlit as st
 
@@ -33,6 +35,7 @@ with col1:
 with col2:
     aggregation = st.radio("Aggregation", ("Daily", "Weekly", "Monthly"), index=0, horizontal=True)
     metric = st.selectbox("Metric to aggregate", ("Antall", "Brutto", "Netto", "Profitt"))
+    include_last_7_days = st.checkbox("Include last 7 days totals", value=True)
 
 run = st.button("Run!")
 
@@ -47,6 +50,15 @@ if run:
         data[f"Aggregation"] = data["Dato"].dt.strftime("Week: %Y-%W")
     else:
         data[f"Aggregation"] = data["Dato"].dt.strftime("Month: %Y-%m")
+    
+    if include_last_7_days:
+        day_from = data["Dato"].max() - timedelta(days=7)
+        last_7_days_totals = data[data["Dato"] >= day_from].groupby(
+            ["Gruppe", "Undergruppe", "Artikkel", "Aggregation"]
+        ).agg({metric: "sum"}).reset_index()
+        last_7_days_totals = last_7_days_totals.pivot(
+            index=["Gruppe", "Undergruppe", "Artikkel"], columns="Aggregation", values=metric
+        )
         
     stats = data[
         ["Gruppe", "Undergruppe", "Aggregation", "Artikkel", metric]
@@ -55,5 +67,9 @@ if run:
         ).sum().groupby(
             ["Gruppe", "Undergruppe", "Artikkel"]
         ).agg(["min", "max", "median", "mean"])
+        
     st.header("Statistics")
     st.dataframe(stats)
+    if include_last_7_days:
+        st.subheader("Totals of the last 7 days")
+        st.dataframe(last_7_days_totals)
