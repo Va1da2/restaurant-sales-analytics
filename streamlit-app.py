@@ -7,8 +7,6 @@ import numpy as np
 import streamlit as st
 import plotly.express as px
 
-OPENWEATHER_API_KEY = os.env.get("OPENWEATHER_API_KEY", None)
-
 st.set_page_config(
     page_title="Chef's Restaurant Sales Analytics", page_icon="\U0001F373", layout="centered"
 )
