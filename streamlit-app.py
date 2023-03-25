@@ -1,17 +1,22 @@
 import os
 import warnings
-from datetime import timedelta
+from datetime import datetime, timedelta
 
+import holidays
+import pytz
 import pandas as pd
 import numpy as np
 import streamlit as st
 import plotly.express as px
 
+WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", None)
+
 st.set_page_config(
-    page_title="Chef's Restaurant Sales Analytics", page_icon="\U0001F373", layout="centered"
+    page_title="Chefalytics", page_icon="\U0001F373", layout="centered"
 )
 
-st.title("\U0001F373" + " Chef Restaurant Sales Analytics")
+st.title("\U0001F373" + " Chefalytics")
+no_holidays = holidays.NO()
 
 with st.sidebar:
     st.header("Data Input")
@@ -22,6 +27,7 @@ with st.sidebar:
         with warnings.catch_warnings(record=True):
             warnings.simplefilter("always")
             data_raw = pd.read_excel(excel_file, sheet_name=sheet_name, engine="openpyxl")
+            data_raw["Dato"] = data_raw["Dato"].dt.tz_localize(pytz.timezone("Europe/Oslo"))
     else:
         st.stop()
 
@@ -60,6 +66,12 @@ with chart_tab:
         stats = data_analysis_selected[["Artikkel", "Aggregation", metric]].groupby(["Artikkel", "Aggregation"]).sum().reset_index()
 
         fig = px.line(stats, x="Aggregation", y=metric, color="Artikkel")
+        if aggregation == "Daily":
+            for timestamp in stats["Aggregation"].unique().tolist():
+                if timestamp.isoweekday() == 6:
+                    fig.add_vrect(x0=timestamp, x1=timestamp+timedelta(days=2), line_width=0, fillcolor="grey", opacity=0.5)
+                if timestamp.date() in no_holidays:
+                    fig.add_vrect(x0=timestamp, x1=timestamp+timedelta(days=1), line_width=0, fillcolor="green", opacity=0.5)
         st.plotly_chart(fig)
 
         with st.expander("Data inside"):
